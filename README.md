@@ -27,7 +27,7 @@ Then open `http://127.0.0.1:4173`.
 ├── index.html
 ├── styles.css
 ├── assets
-│   └── gta-metrolinx-map.jpg
+│   └── gta-dark-map.png
 └── src
     ├── app.js
     └── cities

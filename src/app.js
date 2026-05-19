@@ -2,7 +2,7 @@ const SVG_NS = "http://www.w3.org/2000/svg";
 
 const cities = window.TransitCities || {};
 const gta = cities.gta;
-const coordinateStoragePrefix = "transit-builder:coordinates:";
+const coordinateStoragePrefix = "transit-builder:coordinates:v2:";
 
 const els = {
   citySummary: document.querySelector("#city-summary"),
@@ -366,6 +366,7 @@ function drawPlayerLinks() {
 function drawStations() {
   const servedStations = getServedStations();
   const pressureByStation = getStationPressure(servedStations);
+  const imageScale = getImageScale();
 
   state.city.stations.forEach((sourceStation) => {
     const station = stationById.get(sourceStation.id) || sourceStation;
@@ -397,7 +398,10 @@ function drawStations() {
           class: "demand-ring",
           cx: station.x,
           cy: station.y,
-          r: stationRadius(station) + 7 + pressure * (state.city.image ? 7 : 4),
+          r:
+            stationRadius(station) +
+            7 * imageScale +
+            pressure * (state.city.image ? 7 * imageScale : 4),
           style: `--demand-color: ${pressure > 0.7 ? "#e95f45" : "#f0b63f"}`,
         }),
       );
@@ -426,7 +430,7 @@ function drawStations() {
         "data-testid": `station-hit-${station.id}`,
         cx: station.x,
         cy: station.y,
-        r: state.city.image ? 30 : 17,
+        r: state.city.image ? 30 * imageScale : 17,
       }),
     );
 
@@ -964,9 +968,10 @@ function stationColor(type, served) {
 
 function stationRadius(station) {
   if (state.city.image) {
-    if (station.demand >= 5) return 13;
-    if (station.demand >= 4) return 11;
-    return 9;
+    const imageScale = getImageScale();
+    if (station.demand >= 5) return 13 * imageScale;
+    if (station.demand >= 4) return 11 * imageScale;
+    return 9 * imageScale;
   }
   if (station.demand >= 5) return 8;
   if (station.demand >= 4) return 7;
@@ -974,8 +979,15 @@ function stationRadius(station) {
 }
 
 function stationCoreRadius(station) {
-  if (state.city.image) return Math.max(4, station.demand * 1.35);
+  if (state.city.image) return Math.max(4, station.demand * 1.35) * getImageScale();
   return Math.max(2.6, station.demand * 0.85);
+}
+
+function getImageScale() {
+  if (!state.city.image?.gameplayBaseWidth || !state.city.image?.gameplayBaseHeight) return 1;
+  const xScale = state.city.image.width / state.city.image.gameplayBaseWidth;
+  const yScale = state.city.image.height / state.city.image.gameplayBaseHeight;
+  return (xScale + yScale) / 2;
 }
 
 function labelOffset(station) {
@@ -986,7 +998,13 @@ function labelOffset(station) {
 }
 
 function getDistance(from, to) {
-  return Math.hypot(from.x - to.x, from.y - to.y);
+  const xScale = state.city.image?.gameplayBaseWidth
+    ? state.city.image.width / state.city.image.gameplayBaseWidth
+    : 1;
+  const yScale = state.city.image?.gameplayBaseHeight
+    ? state.city.image.height / state.city.image.gameplayBaseHeight
+    : 1;
+  return Math.hypot((from.x - to.x) / xScale, (from.y - to.y) / yScale);
 }
 
 function linkKey(fromId, toId) {
