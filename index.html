@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Transit Builder GTA</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="topbar">
+        <div class="brand-lockup">
+          <span class="brand-mark" aria-hidden="true">TB</span>
+          <div>
+            <h1>Transit Builder GTA</h1>
+            <p id="city-summary">Greater Toronto Area rapid transit sandbox</p>
+          </div>
+        </div>
+
+        <div class="topbar-actions" aria-label="Game controls">
+          <button class="icon-button" id="play-toggle" type="button" title="Pause simulation" aria-label="Pause simulation">
+            <span aria-hidden="true">II</span>
+          </button>
+          <button class="icon-button" id="undo-button" type="button" title="Undo last build" aria-label="Undo last build">
+            <span aria-hidden="true">&#8634;</span>
+          </button>
+          <button class="icon-button danger" id="reset-button" type="button" title="Reset city" aria-label="Reset city">
+            <span aria-hidden="true">&#8635;</span>
+          </button>
+        </div>
+      </header>
+
+      <section class="game-layout" aria-label="Transit game">
+        <aside class="control-panel" aria-label="Planning tools">
+          <section class="panel-section">
+            <div class="section-label">City</div>
+            <label class="select-label" for="city-select">Map set</label>
+            <select id="city-select">
+              <option value="gta">GTA, Canada</option>
+            </select>
+          </section>
+
+          <section class="panel-section">
+            <div class="section-label">Tools</div>
+            <div class="segmented" role="group" aria-label="Interaction mode">
+              <button class="segment active" id="build-mode" type="button">Build</button>
+              <button class="segment" id="inspect-mode" type="button">Inspect</button>
+              <button class="segment" id="place-mode" type="button">Place</button>
+            </div>
+          </section>
+
+          <section class="panel-section point-editor" id="point-editor" hidden>
+            <div class="section-label">Point Editor</div>
+            <label class="select-label" for="point-station-select">Station</label>
+            <select id="point-station-select"></select>
+
+            <div class="coord-grid">
+              <label for="point-x">X</label>
+              <input id="point-x" type="text" inputmode="numeric" pattern="[0-9]*" />
+              <label for="point-y">Y</label>
+              <input id="point-y" type="text" inputmode="numeric" pattern="[0-9]*" />
+            </div>
+
+            <div class="editor-actions">
+              <button class="small-button" id="apply-point-button" type="button">Apply</button>
+              <button class="small-button" id="export-coordinates-button" type="button">Export</button>
+              <button class="small-button danger" id="reset-points-button" type="button">Reset</button>
+            </div>
+
+            <textarea id="coordinates-output" readonly aria-label="Coordinates code output" rows="8"></textarea>
+          </section>
+
+          <section class="panel-section">
+            <div class="section-label">Line Crew</div>
+            <div class="line-palette" id="line-palette" aria-label="Expansion line colors"></div>
+          </section>
+
+          <section class="panel-section compact-stats">
+            <div class="stat-row">
+              <span>Budget</span>
+              <strong id="budget-value">$120M</strong>
+            </div>
+            <div class="stat-row">
+              <span>Ridership</span>
+              <strong id="ridership-value">0k</strong>
+            </div>
+            <div class="stat-row">
+              <span>Coverage</span>
+              <strong id="coverage-value">0%</strong>
+            </div>
+            <div class="stat-row">
+              <span>Pressure</span>
+              <strong id="pressure-value">Low</strong>
+            </div>
+          </section>
+
+          <section class="panel-section">
+            <div class="section-label">Milestones</div>
+            <ol class="milestone-list" id="milestone-list"></ol>
+          </section>
+
+          <section class="panel-section source-note">
+            <div class="section-label">Map Notes</div>
+            <p>
+              Image-backed gameplay map using real GTA station and corridor names. Official data links are kept in the city module.
+            </p>
+            <ul class="source-links" id="source-links"></ul>
+          </section>
+        </aside>
+
+        <section class="map-stage" aria-label="Game map">
+          <div class="hud-strip" aria-live="polite">
+            <span id="day-value">Day 1</span>
+            <span id="selected-line-value">Cyan crew selected</span>
+            <span id="message-value">Click two stations to add an expansion link.</span>
+          </div>
+
+          <svg id="map" class="transit-map" viewBox="0 0 1000 680" preserveAspectRatio="xMidYMin meet" role="img" aria-labelledby="map-title map-desc">
+            <title id="map-title">GTA rapid transit game map</title>
+            <desc id="map-desc">A playable 2D schematic map of rapid transit stations in the Greater Toronto Area.</desc>
+          </svg>
+
+          <div class="inspector" id="inspector" aria-live="polite">
+            <div>
+              <span class="eyebrow">Selected station</span>
+              <h2 id="station-name">Union</h2>
+            </div>
+            <dl>
+              <div>
+                <dt>Role</dt>
+                <dd id="station-role">Regional hub</dd>
+              </div>
+              <div>
+                <dt>Demand</dt>
+                <dd id="station-demand">High</dd>
+              </div>
+              <div>
+                <dt>Status</dt>
+                <dd id="station-status">Served</dd>
+              </div>
+            </dl>
+          </div>
+        </section>
+      </section>
+    </main>
+
+    <script src="src/cities/gta.js"></script>
+    <script src="src/app.js"></script>
+  </body>
+</html>
