@@ -16,6 +16,7 @@ Then open `http://127.0.0.1:4173`.
 
 - Inspect a schematic GTA map with TTC rapid transit, GO corridors, and UP Express.
 - Pick an expansion crew and click two stations to build a new link.
+- Zoom with the map controls or mouse wheel, and drag the map to pan around large images.
 - Manage a simple capital budget while coverage, ridership, and pressure update over time.
 - Complete milestones for Pearson, Square One, Scarborough Centre, Richmond Hill Centre, and Billy Bishop Airport.
 - Use the separate city data module as the starting point for adding future regions.

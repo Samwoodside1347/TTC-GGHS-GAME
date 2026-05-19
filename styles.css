@@ -456,6 +456,50 @@ select {
   background: #14213d;
 }
 
+.zoom-controls {
+  position: absolute;
+  z-index: 3;
+  top: 72px;
+  right: 28px;
+  display: grid;
+  grid-template-columns: 36px minmax(58px, auto) 36px auto;
+  align-items: center;
+  gap: 6px;
+  padding: 6px;
+  border: 1px solid rgba(203, 214, 226, 0.84);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 10px 26px rgba(31, 47, 70, 0.14);
+  backdrop-filter: blur(12px);
+}
+
+.zoom-controls span {
+  display: grid;
+  place-items: center;
+  min-width: 58px;
+  height: 34px;
+  color: #40536a;
+  font-size: 0.82rem;
+  font-weight: 900;
+}
+
+.zoom-button {
+  display: grid;
+  place-items: center;
+  min-width: 36px;
+  height: 34px;
+  border: 1px solid #cad4df;
+  border-radius: 6px;
+  color: var(--ink);
+  background: #ffffff;
+  font-weight: 900;
+}
+
+.zoom-button.wide {
+  min-width: 58px;
+  padding: 0 10px;
+}
+
 .transit-map {
   width: 100%;
   min-height: 420px;
@@ -464,6 +508,13 @@ select {
   border-radius: 8px;
   background: #f9fbfd;
   box-shadow: var(--shadow);
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.transit-map.is-panning {
+  cursor: grabbing;
 }
 
 .map-grid-line {
@@ -729,6 +780,12 @@ select {
 
   .transit-map {
     min-height: 380px;
+  }
+
+  .zoom-controls {
+    position: static;
+    grid-template-columns: 36px minmax(58px, auto) 36px auto;
+    margin-bottom: 10px;
   }
 
   .inspector {

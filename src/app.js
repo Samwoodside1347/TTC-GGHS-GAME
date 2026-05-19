@@ -17,6 +17,10 @@ const els = {
   buildMode: document.querySelector("#build-mode"),
   inspectMode: document.querySelector("#inspect-mode"),
   placeMode: document.querySelector("#place-mode"),
+  zoomOutButton: document.querySelector("#zoom-out-button"),
+  zoomInButton: document.querySelector("#zoom-in-button"),
+  zoomResetButton: document.querySelector("#zoom-reset-button"),
+  zoomLevelValue: document.querySelector("#zoom-level-value"),
   pointEditor: document.querySelector("#point-editor"),
   pointStationSelect: document.querySelector("#point-station-select"),
   pointX: document.querySelector("#point-x"),
@@ -52,6 +56,11 @@ const state = {
   milestoneRewards: new Set(),
   coordinateOverrides: {},
   selectedPointStationId: null,
+  viewport: null,
+  isPanning: false,
+  panStart: null,
+  pointerWasPanning: false,
+  suppressNextMapClick: false,
 };
 
 let stationById = new Map();
@@ -79,6 +88,11 @@ function loadCity(cityId) {
   state.milestoneRewards = new Set();
   state.coordinateOverrides = loadCoordinateOverrides(state.city.id);
   state.selectedPointStationId = state.city.stations[0]?.id || null;
+  state.viewport = getFullViewport(state.city);
+  state.isPanning = false;
+  state.panStart = null;
+  state.pointerWasPanning = false;
+  state.suppressNextMapClick = false;
 
   refreshStationMap();
   baseLinks = collectBaseLinks(state.city);
@@ -111,6 +125,14 @@ function bindControls() {
   els.inspectMode.addEventListener("click", () => setMode("inspect"));
   els.placeMode.addEventListener("click", () => setMode("place"));
   els.map.addEventListener("click", handleMapPlacement);
+  els.map.addEventListener("wheel", handleMapWheel, { passive: false });
+  els.map.addEventListener("pointerdown", handleMapPointerDown);
+  els.map.addEventListener("pointermove", handleMapPointerMove);
+  els.map.addEventListener("pointerup", handleMapPointerUp);
+  els.map.addEventListener("pointercancel", handleMapPointerUp);
+  els.zoomOutButton.addEventListener("click", () => zoomBy(1 / 1.25));
+  els.zoomInButton.addEventListener("click", () => zoomBy(1.25));
+  els.zoomResetButton.addEventListener("click", resetMapViewport);
 
   els.pointStationSelect.addEventListener("change", (event) => {
     state.selectedPointStationId = event.target.value;
@@ -216,6 +238,7 @@ function renderControls() {
   els.selectedLineValue.textContent =
     state.mode === "place" ? "Point editor active" : `${crew.name} crew selected`;
   els.messageValue.textContent = state.message;
+  renderZoomControls();
   renderPointEditor();
 }
 
@@ -223,7 +246,8 @@ function renderMap() {
   els.map.replaceChildren();
   const mapWidth = state.city.image?.width || 1000;
   const mapHeight = state.city.image?.height || 680;
-  els.map.setAttribute("viewBox", `0 0 ${mapWidth} ${mapHeight}`);
+  ensureViewport(mapWidth, mapHeight);
+  applyMapViewBox();
   els.map.classList.toggle("image-backed", Boolean(state.city.image));
 
   drawBackground();
@@ -231,6 +255,96 @@ function renderMap() {
   if (!state.city.image) drawRoutes();
   drawPlayerLinks();
   drawStations();
+}
+
+function getMapSize(city = state.city) {
+  return {
+    width: city.image?.width || 1000,
+    height: city.image?.height || 680,
+  };
+}
+
+function getFullViewport(city = state.city) {
+  const size = getMapSize(city);
+  return {
+    x: 0,
+    y: 0,
+    width: size.width,
+    height: size.height,
+  };
+}
+
+function ensureViewport(mapWidth = getMapSize().width, mapHeight = getMapSize().height) {
+  if (!state.viewport) {
+    state.viewport = { x: 0, y: 0, width: mapWidth, height: mapHeight };
+  }
+  state.viewport = clampViewport(state.viewport, mapWidth, mapHeight);
+}
+
+function clampViewport(viewport, mapWidth = getMapSize().width, mapHeight = getMapSize().height) {
+  const width = Math.min(Math.max(viewport.width, mapWidth / 8), mapWidth);
+  const height = Math.min(Math.max(viewport.height, mapHeight / 8), mapHeight);
+  return {
+    x: Math.min(Math.max(viewport.x, 0), mapWidth - width),
+    y: Math.min(Math.max(viewport.y, 0), mapHeight - height),
+    width,
+    height,
+  };
+}
+
+function applyMapViewBox() {
+  const viewport = state.viewport || getFullViewport();
+  els.map.setAttribute(
+    "viewBox",
+    `${Math.round(viewport.x)} ${Math.round(viewport.y)} ${Math.round(viewport.width)} ${Math.round(viewport.height)}`,
+  );
+  renderZoomControls();
+}
+
+function renderZoomControls() {
+  if (!els.zoomLevelValue || !state.viewport) return;
+
+  const size = getMapSize();
+  const zoomLevel = size.width / state.viewport.width;
+  els.zoomLevelValue.textContent = `${Math.round(zoomLevel * 100)}%`;
+  els.zoomOutButton.disabled = zoomLevel <= 1.01;
+  els.zoomInButton.disabled = zoomLevel >= 7.99;
+}
+
+function zoomBy(factor, centerPoint = null) {
+  ensureViewport();
+  const size = getMapSize();
+  const current = state.viewport;
+  const currentZoom = size.width / current.width;
+  const nextZoom = Math.min(8, Math.max(1, currentZoom * factor));
+  const nextWidth = size.width / nextZoom;
+  const nextHeight = size.height / nextZoom;
+  const center =
+    centerPoint || {
+      x: current.x + current.width / 2,
+      y: current.y + current.height / 2,
+    };
+  const relativeX = (center.x - current.x) / current.width;
+  const relativeY = (center.y - current.y) / current.height;
+
+  state.viewport = clampViewport(
+    {
+      x: center.x - relativeX * nextWidth,
+      y: center.y - relativeY * nextHeight,
+      width: nextWidth,
+      height: nextHeight,
+    },
+    size.width,
+    size.height,
+  );
+  applyMapViewBox();
+}
+
+function resetMapViewport() {
+  state.viewport = getFullViewport();
+  state.message = "Map view reset.";
+  applyMapViewBox();
+  renderControls();
 }
 
 function drawBackground() {
@@ -483,6 +597,10 @@ function handleStationAction(stationId) {
 }
 
 function handleMapPlacement(event) {
+  if (state.suppressNextMapClick) {
+    state.suppressNextMapClick = false;
+    return;
+  }
   if (state.mode !== "place" || !state.selectedPointStationId) return;
 
   const point = getSvgPoint(event);
@@ -493,6 +611,75 @@ function handleMapPlacement(event) {
   state.selectedStationId = state.selectedPointStationId;
   state.message = `${station.name} placed at ${Math.round(point.x)}, ${Math.round(point.y)}.`;
   render();
+}
+
+function handleMapWheel(event) {
+  event.preventDefault();
+  const point = getSvgPoint(event);
+  zoomBy(event.deltaY < 0 ? 1.2 : 1 / 1.2, point);
+}
+
+function handleMapPointerDown(event) {
+  if (event.button !== 0 || event.target.closest?.(".station-node")) return;
+
+  state.isPanning = true;
+  state.pointerWasPanning = false;
+  state.panStart = {
+    pointerId: event.pointerId,
+    startX: event.clientX,
+    startY: event.clientY,
+    lastX: event.clientX,
+    lastY: event.clientY,
+  };
+  els.map.classList.add("is-panning");
+  els.map.setPointerCapture?.(event.pointerId);
+}
+
+function handleMapPointerMove(event) {
+  if (!state.isPanning || state.panStart?.pointerId !== event.pointerId) return;
+
+  const totalX = event.clientX - state.panStart.startX;
+  const totalY = event.clientY - state.panStart.startY;
+  const deltaX = event.clientX - state.panStart.lastX;
+  const deltaY = event.clientY - state.panStart.lastY;
+  state.panStart.lastX = event.clientX;
+  state.panStart.lastY = event.clientY;
+
+  if (Math.hypot(totalX, totalY) < 4) return;
+
+  state.pointerWasPanning = true;
+  panByScreenDelta(deltaX, deltaY);
+  event.preventDefault();
+}
+
+function handleMapPointerUp(event) {
+  if (!state.isPanning || state.panStart?.pointerId !== event.pointerId) return;
+
+  els.map.releasePointerCapture?.(event.pointerId);
+  els.map.classList.remove("is-panning");
+  state.isPanning = false;
+  state.panStart = null;
+
+  if (state.pointerWasPanning) {
+    state.suppressNextMapClick = true;
+    window.setTimeout(() => {
+      state.suppressNextMapClick = false;
+    }, 0);
+  }
+  state.pointerWasPanning = false;
+}
+
+function panByScreenDelta(deltaX, deltaY) {
+  ensureViewport();
+  const rect = els.map.getBoundingClientRect();
+  const viewport = state.viewport;
+  state.viewport = clampViewport({
+    x: viewport.x - (deltaX * viewport.width) / rect.width,
+    y: viewport.y - (deltaY * viewport.height) / rect.height,
+    width: viewport.width,
+    height: viewport.height,
+  });
+  applyMapViewBox();
 }
 
 function renderPointStationOptions() {
