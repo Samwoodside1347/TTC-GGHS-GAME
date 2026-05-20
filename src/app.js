@@ -21,6 +21,7 @@ const els = {
   zoomInButton: document.querySelector("#zoom-in-button"),
   zoomResetButton: document.querySelector("#zoom-reset-button"),
   zoomLevelValue: document.querySelector("#zoom-level-value"),
+  pixelLocationValue: document.querySelector("#pixel-location-value"),
   pointEditor: document.querySelector("#point-editor"),
   pointStationSelect: document.querySelector("#point-station-select"),
   pointX: document.querySelector("#point-x"),
@@ -61,6 +62,7 @@ const state = {
   panStart: null,
   pointerWasPanning: false,
   suppressNextMapClick: false,
+  hoverPoint: null,
 };
 
 let stationById = new Map();
@@ -93,6 +95,7 @@ function loadCity(cityId) {
   state.panStart = null;
   state.pointerWasPanning = false;
   state.suppressNextMapClick = false;
+  state.hoverPoint = null;
 
   refreshStationMap();
   baseLinks = collectBaseLinks(state.city);
@@ -130,6 +133,7 @@ function bindControls() {
   els.map.addEventListener("pointermove", handleMapPointerMove);
   els.map.addEventListener("pointerup", handleMapPointerUp);
   els.map.addEventListener("pointercancel", handleMapPointerUp);
+  els.map.addEventListener("pointerleave", handleMapPointerLeave);
   els.zoomOutButton.addEventListener("click", () => zoomBy(1 / 1.25));
   els.zoomInButton.addEventListener("click", () => zoomBy(1.25));
   els.zoomResetButton.addEventListener("click", resetMapViewport);
@@ -239,6 +243,7 @@ function renderControls() {
     state.mode === "place" ? "Point editor active" : `${crew.name} crew selected`;
   els.messageValue.textContent = state.message;
   renderZoomControls();
+  renderPixelLocator();
   renderPointEditor();
 }
 
@@ -309,6 +314,14 @@ function renderZoomControls() {
   els.zoomLevelValue.textContent = `${Math.round(zoomLevel * 100)}%`;
   els.zoomOutButton.disabled = zoomLevel <= 1.01;
   els.zoomInButton.disabled = zoomLevel >= 7.99;
+}
+
+function renderPixelLocator() {
+  if (!els.pixelLocationValue) return;
+
+  els.pixelLocationValue.textContent = state.hoverPoint
+    ? `x ${state.hoverPoint.x}, y ${state.hoverPoint.y}`
+    : "x --, y --";
 }
 
 function zoomBy(factor, centerPoint = null) {
@@ -603,7 +616,7 @@ function handleMapPlacement(event) {
   }
   if (state.mode !== "place" || !state.selectedPointStationId) return;
 
-  const point = getSvgPoint(event);
+  const point = updatePixelLocator(event);
   if (!point) return;
 
   updateStationCoordinate(state.selectedPointStationId, point.x, point.y);
@@ -615,11 +628,12 @@ function handleMapPlacement(event) {
 
 function handleMapWheel(event) {
   event.preventDefault();
-  const point = getSvgPoint(event);
+  const point = updatePixelLocator(event);
   zoomBy(event.deltaY < 0 ? 1.2 : 1 / 1.2, point);
 }
 
 function handleMapPointerDown(event) {
+  updatePixelLocator(event);
   if (event.button !== 0 || event.target.closest?.(".station-node")) return;
 
   state.isPanning = true;
@@ -636,6 +650,7 @@ function handleMapPointerDown(event) {
 }
 
 function handleMapPointerMove(event) {
+  updatePixelLocator(event);
   if (!state.isPanning || state.panStart?.pointerId !== event.pointerId) return;
 
   const totalX = event.clientX - state.panStart.startX;
@@ -650,6 +665,11 @@ function handleMapPointerMove(event) {
   state.pointerWasPanning = true;
   panByScreenDelta(deltaX, deltaY);
   event.preventDefault();
+}
+
+function handleMapPointerLeave() {
+  state.hoverPoint = null;
+  renderPixelLocator();
 }
 
 function handleMapPointerUp(event) {
@@ -680,6 +700,18 @@ function panByScreenDelta(deltaX, deltaY) {
     height: viewport.height,
   });
   applyMapViewBox();
+}
+
+function updatePixelLocator(event) {
+  const point = getSvgPoint(event);
+  if (!point) return null;
+
+  state.hoverPoint = {
+    x: Math.round(point.x),
+    y: Math.round(point.y),
+  };
+  renderPixelLocator();
+  return point;
 }
 
 function renderPointStationOptions() {

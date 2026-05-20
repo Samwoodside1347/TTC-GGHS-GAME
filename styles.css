@@ -462,7 +462,7 @@ select {
   top: 72px;
   right: 28px;
   display: grid;
-  grid-template-columns: 36px minmax(58px, auto) 36px auto;
+  grid-template-columns: 36px minmax(58px, auto) 36px minmax(118px, auto) auto;
   align-items: center;
   gap: 6px;
   padding: 6px;
@@ -481,6 +481,13 @@ select {
   color: #40536a;
   font-size: 0.82rem;
   font-weight: 900;
+}
+
+.zoom-controls .pixel-readout {
+  min-width: 118px;
+  padding: 0 8px;
+  color: #14213d;
+  font-variant-numeric: tabular-nums;
 }
 
 .zoom-button {
@@ -784,8 +791,14 @@ select {
 
   .zoom-controls {
     position: static;
-    grid-template-columns: 36px minmax(58px, auto) 36px auto;
+    grid-template-columns: 36px minmax(50px, 1fr) 36px minmax(104px, 1.4fr) minmax(56px, auto);
     margin-bottom: 10px;
+  }
+
+  .zoom-controls .pixel-readout {
+    min-width: 104px;
+    padding: 0 6px;
+    font-size: 0.78rem;
   }
 
   .inspector {
