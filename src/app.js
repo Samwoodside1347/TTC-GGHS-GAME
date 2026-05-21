@@ -256,9 +256,11 @@ function renderMap() {
   els.map.classList.toggle("image-backed", Boolean(state.city.image));
 
   drawBackground();
-  drawSuggestedLinks();
-  if (!state.city.image) drawRoutes();
-  drawPlayerLinks();
+  if (!state.city.image) {
+    drawSuggestedLinks();
+    drawRoutes();
+    drawPlayerLinks();
+  }
   drawStations();
 }
 
